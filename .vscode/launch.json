@@ -7,7 +7,8 @@
         
         {
             "name": "App Debug",
-            "program": "${workspaceFolder}/app.js",
+            "cwd": "${workspaceFolder}",
+            "program": "${workspaceFolder}/src/index.js",
             "request": "launch",
             "skipFiles": [
                 "<node_internals>/**"
