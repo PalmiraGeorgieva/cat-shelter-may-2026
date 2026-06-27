@@ -4,7 +4,6 @@ import cats from './cats.js';
 import { URLSearchParams } from 'url';
 import { addBreed, readBread } from './breedService.js';
 
-
 const server = http.createServer(async (req, res) => {
     if(req.method === 'POST' && req.url === '/cats/add-breed') {
         let body = '';
@@ -17,7 +16,7 @@ const server = http.createServer(async (req, res) => {
             const breedName = formData.get('breed');
             addBreed(breedName);
         });
-        return res.end();
+        return res.writeHead(302, { Location: '/'}).end();
 
     }
     if (req.url === '/styles/site.css') {
@@ -52,7 +51,7 @@ const server = http.createServer(async (req, res) => {
         case '/cats/add-cat':
             htmlContent = await fs.readFile('./src/views/addCat.html', 'utf-8');
             break;
-        case '/cats/add-bread':
+        case '/cats/add-breed':
             htmlContent = await fs.readFile('./src/views/addBreed.html', 'utf-8');
             break;
         default:
