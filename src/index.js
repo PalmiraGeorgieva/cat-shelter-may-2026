@@ -1,8 +1,25 @@
 import http from 'http';
 import fs from 'fs/promises';
+import cats from './cats.js';
+import { URLSearchParams } from 'url';
+import { addBreed, readBread } from './breedService.js';
 
 
 const server = http.createServer(async (req, res) => {
+    if(req.method === 'POST' && req.url === '/cats/add-breed') {
+        let body = '';
+        req.on('data', (chunk) => {
+            body += chunk;
+        });
+
+        req.on('end', async () => {
+            const formData = new URLSearchParams(body);
+            const breedName = formData.get('breed');
+            addBreed(breedName);
+        });
+        return res.end();
+
+    }
     if (req.url === '/styles/site.css') {
         const cssContent = await fs.readFile('./src/styles/styles/site.css', 'utf-8');
         res.writeHead(200, { 'Content-Type': 'text/css'});
@@ -30,7 +47,7 @@ const server = http.createServer(async (req, res) => {
 
     switch (req.url) {
         case '/':
-            htmlContent = await fs.readFile('./src/views/home/index.html', 'utf-8');
+            htmlContent = await renderHomePage();
             break;
         case '/cats/add-cat':
             htmlContent = await fs.readFile('./src/views/addCat.html', 'utf-8');
@@ -50,3 +67,21 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(5000, () => console.log('Server is listening on http://localhost:5000...'));
 
+async function renderHomePage(){
+   let htmlContent = await fs.readFile('./src/views/home/index.html', 'utf-8');
+    const catTemplate = (cat) =>`
+      <li>
+            <img src="${cats.imageUrl}" alt="${cat.name}">
+                <h3>${cat.name}</h3>
+                <p><span>Breed: </span>${cat.breed}</p>
+                <p><span>Description: </span>${cat.description}</p>
+                    <ul class="buttons">
+                        <li class="btn edit"><a href="">Change Info</a></li>
+                        <li class="btn delete"><a href="">New Home</a></li>
+            </ul>
+        </li>
+    `;
+    const catsContent = cats.map(cat => catTemplate(cat)).join('\n');
+   const result = htmlContent.replace('{{cats}}', catsContent );
+   return result;
+}
