@@ -16,3 +16,25 @@ export function addCat(catData){
 
     cats.push(newCat)
 }
+
+export function getCatById(catId) {
+    return cats.find(cat => cat.id === catId);
+}
+
+export function editCat(catId, catData) {
+    const catIndex = cats.findIndex(cat => cat.id === catId);
+    if (catIndex === -1) {
+        throw new Error("Cat not found");
+        
+    }
+
+    if (catIndex !== -1) {
+        const breedName = getBreedById(catData.breed)?.name || 'Unknown Breed';
+        cats[catIndex] = {
+            ...cats[catIndex],
+            ...catData,
+            breed: breedName,
+        };
+    } 
+    
+}

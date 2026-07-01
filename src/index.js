@@ -2,9 +2,8 @@ import http from 'http';
 import fs from 'fs/promises';
 import { URLSearchParams } from 'url';
 import { addBreed, readBread } from './breedService.js';
-import { addCat, readCats } from './catServise.js';
-import { resolve } from 'dns';
-import { rejects } from 'assert';
+import { addCat, getCatById, readCats, editCat } from './catServise.js';
+
 
 
 const server = http.createServer(async (req, res) => {
@@ -24,9 +23,24 @@ const server = http.createServer(async (req, res) => {
             breed: bodyFormData.get('breed')
         }
 
-        cats.push(newCat);
+        addCat(newCat);
         return res.writeHead(302, { Location: '/' }).end();
 
+    }
+    if(req.method === 'POST' && req.url.startsWith('cats/edit-cat/')) {
+        const catId = req.url.split('/').pop();
+        const editedCat = await readBodyFormData(req);
+
+        editCat(catId, {
+            name: editedCat.get('name'),
+            description: editedCat.get('description'),
+            imageUrl: editedCat.get('imageUrl'),
+            breed: editedCat.get('breed')
+        });
+
+        return res.writeHead(302, { Location: '/' }).end();
+
+        
     }
     if (req.url === '/styles/site.css') {
         const cssContent = await fs.readFile('./src/styles/styles/site.css', 'utf-8');
@@ -101,11 +115,22 @@ async function renderAddCatPage() {
    return result;
 }
 async function renderEditCatPage(catId) {
+    const cat = getCatById(catId);
+
+    if (!cat) {
+        return await renderNotFoundPage();
+    }
     const htmlContent = await fs.readFile('./src/views/editCat.html', 'utf-8');
-    return htmlContent;
+    const result = htmlContent.replace('{{name}}', cat.name)
+            .replace('{{description}}', cat.description)
+            .replace('{{imageUrl}}', cat.imageUrl);
+    return result;
+}
+async function renderNotFoundPage() {
+    return await fs.readFile('./src/views/notFound.html', 'utf-8');
 }
 function readBodyFormData(req) {
-    return new Promise(resolve, rejects => {
+    return new Promise((resolve, reject) => {
           let body = '';
 
           req.on('data', (chunk) => {
@@ -115,6 +140,10 @@ function readBodyFormData(req) {
           req.on('end', () => {
             const formData = new URLSearchParams(body);
             resolve(formData);
+          });
+
+          req.on('error', (err) => {
+            reject(err);
           });
     });
 }
