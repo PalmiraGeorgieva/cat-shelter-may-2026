@@ -2,7 +2,7 @@ import http from 'http';
 import fs from 'fs/promises';
 import { URLSearchParams } from 'url';
 import { addBreed, readBread } from './breedService.js';
-import { addCat, getCatById, readCats, editCat } from './catServise.js';
+import { addCat, getCatById, readCats, editCat, getBreedByName, deleteCat } from './catServise.js';
 
 
 
@@ -27,7 +27,7 @@ const server = http.createServer(async (req, res) => {
         return res.writeHead(302, { Location: '/' }).end();
 
     }
-    if(req.method === 'POST' && req.url.startsWith('cats/edit-cat/')) {
+    if(req.method === 'POST' && req.url.startsWith('/cats/edit-cat/')) {
         const catId = req.url.split('/').pop();
         const editedCat = await readBodyFormData(req);
 
@@ -41,6 +41,12 @@ const server = http.createServer(async (req, res) => {
         return res.writeHead(302, { Location: '/' }).end();
 
         
+    }
+    if(req.method === 'POST' && req.url.startsWith('/cats/new-home/')) {
+        const catId = req.url.split('/').pop();
+      
+        deleteCat(catId);
+        return res.writeHead(302, { Location: '/' }).end();
     }
     if (req.url === '/styles/site.css') {
         const cssContent = await fs.readFile('./src/styles/styles/site.css', 'utf-8');
@@ -77,7 +83,11 @@ const server = http.createServer(async (req, res) => {
     } else if (req.url.startsWith('/cats/edit-cat/')) {
         const catId = req.url.split('/').pop();
         htmlContent = await renderEditCatPage(catId);
-    } else {
+    } else if (req.url.startsWith('/cats/new-home/')) {
+        const catId = req.url.split('/').pop();
+        htmlContent = await renderNewHomePage(catId);
+    }
+    else {
        htmlContent = await fs.readFile('./src/views/notFound.html', 'utf-8');
 
     }
@@ -97,8 +107,8 @@ async function renderHomePage(){
                 <p><span>Breed: </span>${cat.breed}</p>
                 <p><span>Description: </span>${cat.description}</p>
                     <ul class="buttons">
-                        <li class="btn edit"><a href="/cats/edit-cat/id">Change Info</a></li>
-                        <li class="btn delete"><a href="/cats/delete">New Home</a></li>
+                        <li class="btn edit"><a href="/cats/edit-cat/${cat.id}">Change Info</a></li>
+                        <li class="btn delete"><a href="/cats/new-home/${cat.id}">New Home</a></li>
             </ul>
         </li>
     `;
@@ -111,7 +121,7 @@ async function renderHomePage(){
 async function renderAddCatPage() {
    const htmlContent = await fs.readFile('./src/views/addCat.html', 'utf-8');
    const breedOptions = readBread().map(breed => `<option value="${breed.id}">${breed.name}</option>`).join('\n');
-   const result = htmlContent.replace('{{breedOptions}}', breedOptions);
+   const result = htmlContent.replace('{{breedOptions}}', renderBreedOptions());
    return result;
 }
 async function renderEditCatPage(catId) {
@@ -123,8 +133,31 @@ async function renderEditCatPage(catId) {
     const htmlContent = await fs.readFile('./src/views/editCat.html', 'utf-8');
     const result = htmlContent.replace('{{name}}', cat.name)
             .replace('{{description}}', cat.description)
-            .replace('{{imageUrl}}', cat.imageUrl);
+            .replace('{{imageUrl}}', cat.imageUrl)
+            .replace('{{breedOptions}}', renderBreedOptions(cat.breed));
     return result;
+}
+
+function renderBreedOptions(selectedBreedId) {
+    const breeds = readBread();
+    return breeds.map(breed => `<option value="${breed.id}" ${breed.id === selectedBreedId ? 'selected' : ''}>${breed.name}</option>`).join('\n');
+}
+async function renderNewHomePage(catId) {
+    const cat = getCatById(catId);
+    const breed = getBreedByName(cat.breed);
+
+    if (!cat) {
+        return await renderNotFoundPage();
+    }
+    
+    const htmlContent = await fs.readFile('./src/views/newHome.html', 'utf-8');
+    const result = htmlContent.replace('{{name}}', cat.name)
+        .replace('{{description}}', cat.description)
+        .replace('{{imageUrl}}', cat.imageUrl)
+        .replace('{{breedId}}', breed.id)
+        .replace('{{breedName}}', breed.name);
+    return result;
+    
 }
 async function renderNotFoundPage() {
     return await fs.readFile('./src/views/notFound.html', 'utf-8');

@@ -29,10 +29,10 @@
             <label for="description">Description</label>
             <textarea id="description" name="description">{{description}}</textarea>
             <label for="image">Image</label>
-            <input type="file" name="imageUrl"id="image">
+            <input type="text" name="imageUrl" id="image" value="{{imageUrl}}">
             <label for="group">Breed</label>
             <select id="group" name="breed">
-                <option value="Fluffy Cat">Fluffy Cat</option>
+                {{breedOptions}}
             </select>
             <button>Edit Cat</button>
         </form>

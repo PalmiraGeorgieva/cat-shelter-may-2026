@@ -38,3 +38,17 @@ export function editCat(catId, catData) {
     } 
     
 }
+
+export function getBreedByName(breedName) {
+    return breeds.find(breed => breed.name === breedName);
+}
+
+export function deleteCat(catId) {
+    const catIndex = cats.findIndex(cat => cat.id === catId);
+    if(catIndex === -1) {
+        throw new Error("Cat not found");
+    }
+    if (catIndex !== -1) {
+        cats.splice(catIndex, 1);
+    }
+}
