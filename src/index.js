@@ -1,22 +1,31 @@
 import http from 'http';
 import fs from 'fs/promises';
-import cats from './cats.js';
 import { URLSearchParams } from 'url';
 import { addBreed, readBread } from './breedService.js';
+import { addCat, readCats } from './catServise.js';
+import { resolve } from 'dns';
+import { rejects } from 'assert';
+
 
 const server = http.createServer(async (req, res) => {
     if(req.method === 'POST' && req.url === '/cats/add-breed') {
-        let body = '';
-        req.on('data', (chunk) => {
-            body += chunk;
-        });
-
-        req.on('end', async () => {
-            const formData = new URLSearchParams(body);
-            const breedName = formData.get('breed');
-            addBreed(breedName);
-        });
+        const bodyFormData = await readBodyFormData(req);
+        addBreed(bodyFormData.get('breed'));
         return res.writeHead(302, { Location: '/'}).end();
+
+    }
+    if(req.method === 'POST' && req.url === '/cats/add-cat'){
+        const bodyFormData = await readBodyFormData(req);
+
+        const newCat = {
+            name: bodyFormData.get('name'),
+            description: bodyFormData.get('description'),
+            imageUrl: bodyFormData.get('imageUrl'),
+            breed: bodyFormData.get('breed')
+        }
+
+        cats.push(newCat);
+        return res.writeHead(302, { Location: '/' }).end();
 
     }
     if (req.url === '/styles/site.css') {
@@ -43,20 +52,19 @@ const server = http.createServer(async (req, res) => {
 
     let htmlContent = '';
     res.writeHead(200, { 'Content-Type': 'text/html' });
+    
+    if (req.url === '/') {
+       htmlContent = await renderHomePage();
+    } else if (req.url === '/cats/add-cat') {
+        htmlContent = await renderAddCatPage();
+    } else if (req.url === '/cats/add-breed') {
+        htmlContent = await fs.readFile('./src/views/addBreed.html', 'utf-8');
 
-    switch (req.url) {
-        case '/':
-            htmlContent = await renderHomePage();
-            break;
-        case '/cats/add-cat':
-            htmlContent = await fs.readFile('./src/views/addCat.html', 'utf-8');
-            break;
-        case '/cats/add-breed':
-            htmlContent = await fs.readFile('./src/views/addBreed.html', 'utf-8');
-            break;
-        default:
-            htmlContent = await fs.readFile('./src/views/notFound.html', 'utf-8');
-            break;
+    } else if (req.url.startsWith('/cats/edit-cat/')) {
+        const catId = req.url.split('/').pop();
+        htmlContent = await renderEditCatPage(catId);
+    } else {
+       htmlContent = await fs.readFile('./src/views/notFound.html', 'utf-8');
 
     }
     
@@ -70,17 +78,43 @@ async function renderHomePage(){
    let htmlContent = await fs.readFile('./src/views/home/index.html', 'utf-8');
     const catTemplate = (cat) =>`
       <li>
-            <img src="${cats.imageUrl}" alt="${cat.name}">
+            <img src="${cat.imageUrl}" alt="${cat.name}">
                 <h3>${cat.name}</h3>
                 <p><span>Breed: </span>${cat.breed}</p>
                 <p><span>Description: </span>${cat.description}</p>
                     <ul class="buttons">
-                        <li class="btn edit"><a href="">Change Info</a></li>
-                        <li class="btn delete"><a href="">New Home</a></li>
+                        <li class="btn edit"><a href="/cats/edit-cat/id">Change Info</a></li>
+                        <li class="btn delete"><a href="/cats/delete">New Home</a></li>
             </ul>
         </li>
     `;
+    const cats = readCats();
     const catsContent = cats.map(cat => catTemplate(cat)).join('\n');
    const result = htmlContent.replace('{{cats}}', catsContent );
    return result;
+}
+
+async function renderAddCatPage() {
+   const htmlContent = await fs.readFile('./src/views/addCat.html', 'utf-8');
+   const breedOptions = readBread().map(breed => `<option value="${breed.id}">${breed.name}</option>`).join('\n');
+   const result = htmlContent.replace('{{breedOptions}}', breedOptions);
+   return result;
+}
+async function renderEditCatPage(catId) {
+    const htmlContent = await fs.readFile('./src/views/editCat.html', 'utf-8');
+    return htmlContent;
+}
+function readBodyFormData(req) {
+    return new Promise(resolve, rejects => {
+          let body = '';
+
+          req.on('data', (chunk) => {
+            body += chunk;
+          });
+
+          req.on('end', () => {
+            const formData = new URLSearchParams(body);
+            resolve(formData);
+          });
+    });
 }
